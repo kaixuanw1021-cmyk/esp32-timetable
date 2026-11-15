@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ESP32 專屬課表管理</title>
-  <script src="https://jsdelivr.net"></script>
   <style>
     body { font-family: sans-serif; max-width: 480px; margin: 20px auto; padding: 0 15px; background: #f5f7fa; color: #333; }
     .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; }
@@ -39,29 +38,54 @@
 
   <div class="card">
     <h2>📋 目前雲端課表清單</h2>
-    <div id="list">載入中...</div>
+    <div id="list">準備連線中...</div>
   </div>
 
   <script>
-    // 請填入你的 Supabase 資訊
+    // 請確認這兩行填寫正確（URL 結尾不要加斜線）
     const SUPABASE_URL = 'https://iawhewgtugllvxrhocau.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlhd2hld2d0dWdsbHZ4cmhvY2F1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ3MzExNjgsImV4cCI6MjExMDMwNzE2OH0.ruNlWvU0EyXG5zc8XaR1c87d0QjmiTeNwpFUdUspbxo';
-    const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const API_ENDPOINT = `${SUPABASE_URL}/rest/v1/timetable`;
+    const HEADERS = {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    };
 
     const dayNames = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
 
     async function loadClasses() {
-      const { data, error } = await db.from('timetable').select('*').order('day_of_week').order('start_time');
       const listDiv = document.getElementById('list');
-      if (error) { listDiv.innerText = '讀取失敗：' + error.message; return; }
-      if (data.length === 0) { listDiv.innerText = '目前還沒有任何課程'; return; }
-      
-      listDiv.innerHTML = data.map(row => `
-        <div class="item">
-          <span><strong>${dayNames[row.day_of_week]}</strong> ${row.start_time} - ${row.subject}</span>
-          <button class="del-btn" onclick="deleteClass(${row.id})">刪除</button>
-        </div>
-      `).join('');
+      listDiv.innerText = '正在向 Supabase 讀取資料...';
+      try {
+        const res = await fetch(`${API_ENDPOINT}?select=*&order=day_of_week.asc,start_time.asc`, {
+          method: 'GET',
+          headers: HEADERS
+        });
+        
+        if (!res.ok) {
+          const errText = await res.text();
+          listDiv.innerHTML = `<span style="color:red;">讀取失敗 (狀態碼 ${res.status})：${errText}</span>`;
+          return;
+        }
+
+        const data = await res.json();
+        if (data.length === 0) {
+          listDiv.innerText = '連線成功！目前還沒有任何課程，請從上方新增。';
+          return;
+        }
+
+        listDiv.innerHTML = data.map(row => `
+          <div class="item">
+            <span><strong>${dayNames[row.day_of_week]}</strong> ${row.start_time} - ${row.subject}</span>
+            <button class="del-btn" onclick="deleteClass(${row.id})">刪除</button>
+          </div>
+        `).join('');
+      } catch (err) {
+        listDiv.innerHTML = `<span style="color:red;">網路或程式錯誤：${err.message}</span>`;
+      }
     }
 
     async function addClass() {
@@ -70,19 +94,33 @@
       const subject = document.getElementById('subject').value.trim();
       if (!start_time || !subject) return alert('請填寫時間與科目！');
 
-      const { error } = await db.from('timetable').insert([{ day_of_week, start_time, subject }]);
-      if (error) alert('新增失敗：' + error.message);
-      else {
-        document.getElementById('subject').value = '';
-        loadClasses();
+      try {
+        const res = await fetch(API_ENDPOINT, {
+          method: 'POST',
+          headers: HEADERS,
+          body: JSON.stringify({ day_of_week, start_time, subject })
+        });
+        if (!res.ok) {
+          const errText = await res.text();
+          alert(`新增失敗 (${res.status})：${errText}`);
+        } else {
+          document.getElementById('subject').value = '';
+          loadClasses();
+        }
+      } catch (err) {
+        alert('新增發生錯誤：' + err.message);
       }
     }
 
     async function deleteClass(id) {
-      await db.from('timetable').delete().eq('id', id);
+      await fetch(`${API_ENDPOINT}?id=eq.${id}`, {
+        method: 'DELETE',
+        headers: HEADERS
+      });
       loadClasses();
     }
 
+    // 網頁一打開就執行讀取
     loadClasses();
   </script>
 </body>
