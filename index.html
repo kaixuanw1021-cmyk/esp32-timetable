@@ -9,18 +9,23 @@
     .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; }
     h2 { margin-top: 0; font-size: 1.3rem; color: #10b981; }
     label { display: block; margin-top: 12px; font-weight: bold; font-size: 0.9rem; }
+    .time-row { display: flex; gap: 10px; align-items: center; }
+    .time-row input { flex: 1; }
     select, input, button { width: 100%; padding: 10px; margin-top: 5px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-size: 1rem; }
     button { background: #10b981; color: white; border: none; font-weight: bold; margin-top: 18px; cursor: pointer; }
     button:hover { background: #059669; }
     .item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
     .del-btn { width: auto; background: #ef4444; padding: 5px 10px; margin: 0; font-size: 0.85rem; }
+    .badge { background: #d1fae5; color: #065f46; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; margin-right: 4px; }
   </style>
 </head>
 <body>
   <div class="card">
     <h2>📅 新增 ESP32 課表</h2>
-    <label>星期幾</label>
+    <label>重複頻率 / 星期幾</label>
     <select id="day">
+      <option value="7">🔁 每天重複 (Every Day)</option>
+      <option value="8">💼 週一至週五 (Mon-Fri)</option>
       <option value="1">星期一 (Mon)</option>
       <option value="2">星期二 (Tue)</option>
       <option value="3">星期三 (Wed)</option>
@@ -29,10 +34,16 @@
       <option value="6">星期六 (Sat)</option>
       <option value="0">星期日 (Sun)</option>
     </select>
-    <label>上課時間 (24小時制)</label>
-    <input type="time" id="time" value="08:10">
-    <label>科目名稱 (請輸入英文以利 OLED 顯示)</label>
-    <input type="text" id="subject" placeholder="例如: Math, English, Science">
+
+    <label>上課時段 (幾點到幾點)</label>
+    <div class="time-row">
+      <input type="time" id="start_time" value="08:10">
+      <span>～</span>
+      <input type="time" id="end_time" value="09:00">
+    </div>
+
+    <label>科目或事項名稱 (請輸入英文以利 OLED 顯示)</label>
+    <input type="text" id="subject" placeholder="例如: Math, English, Read">
     <button onclick="addClass()">＋ 新增到課表</button>
   </div>
 
@@ -42,7 +53,6 @@
   </div>
 
   <script>
-    // 請確認這兩行填寫正確（URL 結尾不要加斜線）
     const SUPABASE_URL = 'https://iawhewgtugllvxrhocau.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlhd2hld2d0dWdsbHZ4cmhvY2F1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ3MzExNjgsImV4cCI6MjExMDMwNzE2OH0.ruNlWvU0EyXG5zc8XaR1c87d0QjmiTeNwpFUdUspbxo';
 
@@ -54,20 +64,23 @@
       'Prefer': 'return=representation'
     };
 
-    const dayNames = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+    const dayNames = {
+      0: '週日', 1: '週一', 2: '週二', 3: '週三', 4: '週四', 5: '週五', 6: '週六',
+      7: '每天', 8: '週一至五'
+    };
 
     async function loadClasses() {
       const listDiv = document.getElementById('list');
       listDiv.innerText = '正在向 Supabase 讀取資料...';
       try {
-        const res = await fetch(`${API_ENDPOINT}?select=*&order=day_of_week.asc,start_time.asc`, {
+        const res = await fetch(`${API_ENDPOINT}?select=*&order=day_of_week.desc,start_time.asc`, {
           method: 'GET',
           headers: HEADERS
         });
         
         if (!res.ok) {
           const errText = await res.text();
-          listDiv.innerHTML = `<span style="color:red;">讀取失敗 (狀態碼 ${res.status})：${errText}</span>`;
+          listDiv.innerHTML = `<span style="color:red;">讀取失敗 (${res.status})：${errText}</span>`;
           return;
         }
 
@@ -79,26 +92,32 @@
 
         listDiv.innerHTML = data.map(row => `
           <div class="item">
-            <span><strong>${dayNames[row.day_of_week]}</strong> ${row.start_time} - ${row.subject}</span>
+            <span>
+              <span class="badge">${dayNames[row.day_of_week] || '自訂'}</span>
+              <strong>${row.start_time}~${row.end_time || ''}</strong> ${row.subject}
+            </span>
             <button class="del-btn" onclick="deleteClass(${row.id})">刪除</button>
           </div>
         `).join('');
       } catch (err) {
-        listDiv.innerHTML = `<span style="color:red;">網路或程式錯誤：${err.message}</span>`;
+        listDiv.innerHTML = `<span style="color:red;">連線錯誤：${err.message}</span>`;
       }
     }
 
     async function addClass() {
       const day_of_week = parseInt(document.getElementById('day').value);
-      const start_time = document.getElementById('time').value;
+      const start_time = document.getElementById('start_time').value;
+      const end_time = document.getElementById('end_time').value;
       const subject = document.getElementById('subject').value.trim();
-      if (!start_time || !subject) return alert('請填寫時間與科目！');
+      
+      if (!start_time || !end_time || !subject) return alert('請完整填寫開始時間、結束時間與科目！');
+      if (start_time >= end_time) return alert('結束時間必須晚於開始時間喔！');
 
       try {
         const res = await fetch(API_ENDPOINT, {
           method: 'POST',
           headers: HEADERS,
-          body: JSON.stringify({ day_of_week, start_time, subject })
+          body: JSON.stringify({ day_of_week, start_time, end_time, subject })
         });
         if (!res.ok) {
           const errText = await res.text();
@@ -120,7 +139,6 @@
       loadClasses();
     }
 
-    // 網頁一打開就執行讀取
     loadClasses();
   </script>
 </body>
