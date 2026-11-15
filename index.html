@@ -26,6 +26,7 @@
     <select id="day">
       <option value="7">🔁 每天重複 (Every Day)</option>
       <option value="8">💼 週一至週五 (Mon-Fri)</option>
+      <option value="9">🏖️ 只有週末 (Sat-Sun)</option>
       <option value="1">星期一 (Mon)</option>
       <option value="2">星期二 (Tue)</option>
       <option value="3">星期三 (Wed)</option>
@@ -66,7 +67,7 @@
 
     const dayNames = {
       0: '週日', 1: '週一', 2: '週二', 3: '週三', 4: '週四', 5: '週五', 6: '週六',
-      7: '每天', 8: '週一至五'
+      7: '每天', 8: '週一至五', 9: '只有週末'
     };
 
     async function loadClasses() {
