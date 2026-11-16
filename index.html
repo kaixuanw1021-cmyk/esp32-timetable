@@ -31,7 +31,7 @@
 
   <!-- 1. 登入與忘記密碼畫面 -->
   <div id="auth-section" class="card">
-    <h2>課表管理系統登入</h2>
+    <h2>🔐 課表管理系統登入</h2>
 
     <div id="key-setup-box" class="key-box" style="display:none;">
       <strong>首次使用設定：</strong>請貼上你的 Supabase <code>anon public</code> 金鑰（儲存於本機瀏覽器，免改程式碼）：
@@ -53,7 +53,7 @@
 
   <!-- 2. 設定新密碼畫面 -->
   <div id="password-section" class="card" style="display:none;">
-    <h2>設定新密碼</h2>
+    <h2>🔑 設定新密碼</h2>
     <label>輸入新密碼 (至少 6 個字元)</label>
     <input type="password" id="new-password" placeholder="請輸入新密碼">
     <button id="btn-update-pw" type="button" onclick="updatePassword()">確認更新密碼</button>
@@ -71,12 +71,12 @@
     </div>
 
     <div class="card">
-      <h2>新增 ESP32 課表</h2>
+      <h2>📅 新增 ESP32 課表</h2>
       <label>重複頻率 / 星期幾</label>
       <select id="day">
-        <option value="7">每天重複 (Every Day)</option>
-        <option value="8">週一至週五 (Mon-Fri)</option>
-        <option value="9">只有週末 (Sat-Sun)</option>
+        <option value="7">🔁 每天重複 (Every Day)</option>
+        <option value="8">💼 週一至週五 (Mon-Fri)</option>
+        <option value="9">🏖️ 只有週末 (Sat-Sun)</option>
         <option value="1">星期一 (Mon)</option>
         <option value="2">星期二 (Tue)</option>
         <option value="3">星期三 (Wed)</option>
@@ -99,12 +99,12 @@
     </div>
 
     <div class="card">
-      <h2>目前雲端課表清單</h2>
+      <h2>📋 目前雲端課表清單</h2>
       <div id="list">載入中...</div>
     </div>
 
     <div class="card">
-      <h2>通行金鑰 (Passkey) 設定</h2>
+      <h2>🛡️ 通行金鑰 (Passkey) 設定</h2>
       <p style="font-size:0.85rem; color:#666; margin-top:0;">將此手機或電腦的指紋 / Face ID 綁定為通行金鑰，下次免打密碼直接登入：</p>
       <button id="btn-passkey-reg" type="button" class="btn-passkey" onclick="registerPasskey()">＋ 在此裝置新增通行金鑰</button>
     </div>
@@ -112,7 +112,7 @@
 
   <script>
     var SUPABASE_URL = 'https://iawhewgtugllvxrhocau.supabase.co';
-    var DEFAULT_KEY = '在這裡貼上你的_anon_public_key';
+    var DEFAULT_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlhd2hld2d0dWdsbHZ4cmhvY2F1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ3MzExNjgsImV4cCI6MjExMDMwNzE2OH0.ruNlWvU0EyXG5zc8XaR1c87d0QjmiTeNwpFUdUspbxo';
 
     function getApiKey() {
       var saved = localStorage.getItem('sb_custom_api_key');
