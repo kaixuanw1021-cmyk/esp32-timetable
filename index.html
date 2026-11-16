@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ESP32 專屬課表管理</title>
   <style>
-    body { font-family: sans-serif; max-width: 480px; margin: 20px auto; padding: 0 15px; background: #f5f7fa; color: #333; }
-    .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 480px; margin: 20px auto; padding: 0 15px; background: #f5f7fa; color: #333; }
+    .card { background: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; }
     h2 { margin-top: 0; font-size: 1.25rem; color: #10b981; }
     label { display: block; margin-top: 12px; font-weight: bold; font-size: 0.9rem; }
     .time-row { display: flex; gap: 10px; align-items: center; }
     .time-row input { flex: 1; }
     select, input, button { width: 100%; padding: 10px; margin-top: 6px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-size: 1rem; }
-    button { background: #10b981; color: white; border: none; font-weight: bold; margin-top: 14px; cursor: pointer; }
+    button { background: #10b981; color: #ffffff; border: none; font-weight: bold; margin-top: 14px; cursor: pointer; }
     button:hover { background: #059669; }
     button:disabled { background: #9ca3af; cursor: not-allowed; }
     .btn-passkey { background: #3b82f6; }
@@ -22,66 +22,61 @@
     .item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
     .del-btn { width: auto; background: #ef4444; padding: 5px 10px; margin: 0; font-size: 0.85rem; }
     .badge { background: #d1fae5; color: #065f46; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; margin-right: 4px; }
-    .hidden { display: none !important; }
     .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.85rem; color: #666; }
     .divider { text-align: center; margin: 14px 0 6px; font-size: 0.85rem; color: #888; }
-    #error-banner { background: #fee2e2; color: #b91c1c; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 0.9rem; display: none; }
+    .key-box { background: #fef3c7; border: 1px solid #f59e0b; padding: 12px; border-radius: 8px; margin-bottom: 14px; font-size: 0.85rem; }
   </style>
-  <script>
-    window.onerror = function(msg, url, line) {
-      var banner = document.getElementById('error-banner');
-      if (banner) {
-        banner.style.display = 'block';
-        banner.innerText = '網頁程式錯誤 (第 ' + line + ' 行): ' + msg;
-      }
-    };
-  </script>
 </head>
 <body>
 
-  <div id="error-banner"></div>
-
   <!-- 1. 登入與忘記密碼畫面 -->
   <div id="auth-section" class="card">
-    <h2>🔐 課表管理系統登入</h2>
+    <h2>課表管理系統登入</h2>
+
+    <div id="key-setup-box" class="key-box" style="display:none;">
+      <strong>首次使用設定：</strong>請貼上你的 Supabase <code>anon public</code> 金鑰（儲存於本機瀏覽器，免改程式碼）：
+      <input type="text" id="custom-api-key" placeholder="貼上 eyJ... 或 sb_publishable_... 金鑰">
+      <button type="button" onclick="saveApiKey()" style="margin-top:8px; padding:8px; font-size:0.9rem;">儲存金鑰</button>
+    </div>
+
     <label>電子信箱 (Email)</label>
     <input type="email" id="email" placeholder="請輸入管理員信箱">
     <label>密碼</label>
     <input type="password" id="password" placeholder="請輸入密碼">
-    
-    <button id="btn-login" onclick="loginWithPassword()">密碼登入</button>
-    <button id="btn-forgot" class="btn-outline" onclick="forgotPassword()">忘記密碼？寄送重設連結</button>
+
+    <button id="btn-login" type="button" onclick="loginWithPassword()">密碼登入</button>
+    <button id="btn-forgot" type="button" class="btn-outline" onclick="forgotPassword()">忘記密碼？寄送重設連結</button>
 
     <div class="divider">── 或使用生物辨識快速登入 ──</div>
-    <button id="btn-passkey-login" class="btn-passkey" onclick="loginWithPasskey()">🔑 使用通行金鑰 (Passkey) 登入</button>
+    <button id="btn-passkey-login" type="button" class="btn-passkey" onclick="loginWithPasskey()">使用通行金鑰 (Passkey) 登入</button>
   </div>
 
   <!-- 2. 設定新密碼畫面 -->
-  <div id="password-section" class="card hidden">
-    <h2>🔑 設定新密碼</h2>
+  <div id="password-section" class="card" style="display:none;">
+    <h2>設定新密碼</h2>
     <label>輸入新密碼 (至少 6 個字元)</label>
     <input type="password" id="new-password" placeholder="請輸入新密碼">
-    <button id="btn-update-pw" onclick="updatePassword()">確認更新密碼</button>
-    <button class="btn-outline" onclick="cancelPasswordChange()">取消返回</button>
+    <button id="btn-update-pw" type="button" onclick="updatePassword()">確認更新密碼</button>
+    <button type="button" class="btn-outline" onclick="showView('app')">取消返回</button>
   </div>
 
   <!-- 3. 登入成功後的課表管理主畫面 -->
-  <div id="app-section" class="hidden">
+  <div id="app-section" style="display:none;">
     <div class="top-bar">
       <span id="user-email">已登入</span>
       <div>
-        <a href="#" onclick="showChangePassword()" style="color:#3b82f6; margin-right:12px;">修改密碼</a>
-        <a href="#" onclick="logout()" style="color:#ef4444;">登出</a>
+        <a href="#" onclick="showView('password'); return false;" style="color:#3b82f6; margin-right:12px;">修改密碼</a>
+        <a href="#" onclick="logout(); return false;" style="color:#ef4444;">登出</a>
       </div>
     </div>
 
     <div class="card">
-      <h2>📅 新增 ESP32 課表</h2>
+      <h2>新增 ESP32 課表</h2>
       <label>重複頻率 / 星期幾</label>
       <select id="day">
-        <option value="7">🔁 每天重複 (Every Day)</option>
-        <option value="8">💼 週一至週五 (Mon-Fri)</option>
-        <option value="9">🏖️ 只有週末 (Sat-Sun)</option>
+        <option value="7">每天重複 (Every Day)</option>
+        <option value="8">週一至週五 (Mon-Fri)</option>
+        <option value="9">只有週末 (Sat-Sun)</option>
         <option value="1">星期一 (Mon)</option>
         <option value="2">星期二 (Tue)</option>
         <option value="3">星期三 (Wed)</option>
@@ -100,60 +95,66 @@
 
       <label>科目或事項名稱 (英文)</label>
       <input type="text" id="subject" placeholder="例如: Math, English, Read">
-      <button id="btn-add" onclick="addClass()">＋ 新增到課表</button>
+      <button id="btn-add" type="button" onclick="addClass()">＋ 新增到課表</button>
     </div>
 
     <div class="card">
-      <h2>📋 目前雲端課表清單</h2>
+      <h2>目前雲端課表清單</h2>
       <div id="list">載入中...</div>
     </div>
 
     <div class="card">
-      <h2>🛡️ 通行金鑰 (Passkey) 設定</h2>
-      <p style="font-size:0.85rem; color:#666; margin-top:0;">將此手機或電腦的指紋 / Face ID 綁定為通行金鑰：</p>
-      <button id="btn-passkey-reg" class="btn-passkey" onclick="registerPasskey()">＋ 在此裝置新增通行金鑰</button>
+      <h2>通行金鑰 (Passkey) 設定</h2>
+      <p style="font-size:0.85rem; color:#666; margin-top:0;">將此手機或電腦的指紋 / Face ID 綁定為通行金鑰，下次免打密碼直接登入：</p>
+      <button id="btn-passkey-reg" type="button" class="btn-passkey" onclick="registerPasskey()">＋ 在此裝置新增通行金鑰</button>
     </div>
   </div>
 
   <script>
-    var SUPABASE_URL = 'https://supabase.co';
-    var SUPABASE_KEY = '在這裡貼上你的_anon_public_key';
+    var SUPABASE_URL = 'https://iawhewgtugllvxrhocau.supabase.co';
+    var DEFAULT_KEY = '在這裡貼上你的_anon_public_key';
+
+    function getApiKey() {
+      var saved = localStorage.getItem('sb_custom_api_key');
+      if (saved && saved.trim() !== '') return saved.trim();
+      return DEFAULT_KEY;
+    }
+
+    function saveApiKey() {
+      var val = document.getElementById('custom-api-key').value.trim();
+      if (!val) return alert('請先貼上金鑰！');
+      localStorage.setItem('sb_custom_api_key', val);
+      document.getElementById('key-setup-box').style.display = 'none';
+      alert('金鑰已儲存！現在可以直接輸入信箱與密碼登入。');
+    }
 
     var accessToken = localStorage.getItem('sb_access_token') || '';
     var userEmail = localStorage.getItem('sb_user_email') || '';
-
     var dayNames = {
       0: '週日', 1: '週一', 2: '週二', 3: '週三', 4: '週四', 5: '週五', 6: '週六',
       7: '每天', 8: '週一至五', 9: '只有週末'
     };
 
-    function checkRecoveryHash() {
-      var hash = window.location.hash;
-      if (hash && hash.indexOf('type=recovery') !== -1) {
-        var params = new URLSearchParams(hash.substring(1));
-        var token = params.get('access_token');
-        if (token) {
-          accessToken = token;
-          localStorage.setItem('sb_access_token', token);
-          window.history.replaceState(null, null, window.location.pathname);
-          showView('password');
-          return true;
+    function showView(v) {
+      document.getElementById('auth-section').style.display = (v === 'auth') ? 'block' : 'none';
+      document.getElementById('password-section').style.display = (v === 'password') ? 'block' : 'none';
+      document.getElementById('app-section').style.display = (v === 'app') ? 'block' : 'none';
+      if (v === 'auth') {
+        var k = getApiKey();
+        if (k.indexOf('在這裡貼上') !== -1) {
+          document.getElementById('key-setup-box').style.display = 'block';
         }
-      }
-      return false;
-    }
-
-    function showView(view) {
-      document.getElementById('auth-section').classList.toggle('hidden', view !== 'auth');
-      document.getElementById('password-section').classList.toggle('hidden', view !== 'password');
-      document.getElementById('app-section').classList.toggle('hidden', view !== 'app');
-      if (view === 'app') {
+      } else if (v === 'app') {
         document.getElementById('user-email').innerText = userEmail || '已登入';
         loadClasses();
       }
     }
 
     async function loginWithPassword() {
+      var apiKey = getApiKey();
+      if (apiKey.indexOf('在這裡貼上') !== -1) {
+        return alert('請先在上方黃色框貼上你的 Supabase API Key 並按儲存金鑰！');
+      }
       var email = document.getElementById('email').value.trim();
       var password = document.getElementById('password').value;
       if (!email || !password) return alert('請輸入信箱與密碼！');
@@ -165,7 +166,7 @@
       try {
         var res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
           method: 'POST',
-          headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+          headers: { 'apikey': apiKey, 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: email, password: password })
         });
         var data = await res.json();
@@ -185,6 +186,7 @@
     }
 
     async function forgotPassword() {
+      var apiKey = getApiKey();
       var email = document.getElementById('email').value.trim();
       if (!email) return alert('請先在上方輸入電子信箱！');
 
@@ -195,7 +197,7 @@
       try {
         var res = await fetch(SUPABASE_URL + '/auth/v1/recover', {
           method: 'POST',
-          headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+          headers: { 'apikey': apiKey, 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: email, redirect_to: window.location.origin })
         });
         if (!res.ok) {
@@ -211,12 +213,10 @@
       }
     }
 
-    function showChangePassword() { showView('password'); }
-    function cancelPasswordChange() { showView('app'); }
-
     async function updatePassword() {
+      var apiKey = getApiKey();
       var newPassword = document.getElementById('new-password').value;
-      if (newPassword.length < 6) return alert('新密碼至少需要 6 個字元！');
+      if (newPassword.length < 6) return alert('新密碼至少 6 個字元！');
 
       var btn = document.getElementById('btn-update-pw');
       btn.disabled = true;
@@ -226,14 +226,14 @@
         var res = await fetch(SUPABASE_URL + '/auth/v1/user', {
           method: 'PUT',
           headers: {
-            'apikey': SUPABASE_KEY,
+            'apikey': apiKey,
             'Authorization': 'Bearer ' + accessToken,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ password: newPassword })
         });
         var data = await res.json();
-        if (!res.ok) throw new Error(data.msg || '更新失敗，請重新登入後再試');
+        if (!res.ok) throw new Error(data.msg || '更新失敗，請重新登入再試');
 
         alert('密碼已成功更新！');
         document.getElementById('new-password').value = '';
@@ -247,7 +247,9 @@
     }
 
     async function registerPasskey() {
+      var apiKey = getApiKey();
       if (!window.PublicKeyCredential) return alert('此裝置或瀏覽器不支援通行金鑰。');
+
       var btn = document.getElementById('btn-passkey-reg');
       btn.disabled = true;
       btn.innerText = '正在呼叫裝置指紋 / Face ID...';
@@ -255,103 +257,120 @@
       try {
         var res = await fetch(SUPABASE_URL + '/auth/v1/factors', {
           method: 'POST',
-        headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + accessToken,
-        'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ factor_type: 'webauthn', friendly_name: '我的通行金鑰' })
+          headers: {
+            'apikey': apiKey,
+            'Authorization': 'Bearer ' + accessToken,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ factor_type: 'webauthn', friendly_name: '我的通行金鑰' })
         });
         var data = await res.json();
         if (!res.ok) throw new Error(data.msg || '請確認 Supabase 後台已開啟 WebAuthn');
         alert('通行金鑰啟動成功！請依瀏覽器提示完成生物辨識綁定。');
-        } catch (err) {
+      } catch (err) {
         alert('通行金鑰設定提示：' + err.message);
-        } finally {
+      } finally {
         btn.disabled = false;
         btn.innerText = '＋ 在此裝置新增通行金鑰';
-        }
-        }
-        async function loginWithPasskey() {
-        var email = document.getElementById('email').value.trim();
-        if (!email) return alert('請先輸入你的電子信箱！');
-        alert('請確認已在 Supabase 後台 Authentication -> Multi-Factor 開啟 WebAuthn，並先用密碼登入綁定此裝置。');
-        }
-        function logout() {
-        accessToken = '';
-        userEmail = '';
-        localStorage.removeItem('sb_access_token');
-        localStorage.removeItem('sb_user_email');
-        showView('auth');
-        }
-        async function loadClasses() {
-        var listDiv = document.getElementById('list');
-        listDiv.innerText = '讀取中...';
-        try {
+      }
+    }
+
+    function loginWithPasskey() {
+      var email = document.getElementById('email').value.trim();
+      if (!email) return alert('請先輸入你的電子信箱！');
+      alert('請確認已在 Supabase 後台 Authentication -> Multi-Factor 開啟 WebAuthn，並先用密碼登入綁定此裝置。');
+    }
+
+    function logout() {
+      accessToken = '';
+      userEmail = '';
+      localStorage.removeItem('sb_access_token');
+      localStorage.removeItem('sb_user_email');
+      showView('auth');
+    }
+
+    async function loadClasses() {
+      var apiKey = getApiKey();
+      var listDiv = document.getElementById('list');
+      listDiv.innerText = '讀取中...';
+      try {
         var res = await fetch(SUPABASE_URL + '/rest/v1/timetable?select=*&order=day_of_week.desc,start_time.asc', {
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + accessToken }
+          headers: { 'apikey': apiKey, 'Authorization': 'Bearer ' + accessToken }
         });
         if (res.status === 401) return logout();
         var data = await res.json();
         if (!data || data.length === 0) {
-        listDiv.innerText = '目前還沒有任何課程。';
-        return;
+          listDiv.innerText = '目前還沒有任何課程。';
+          return;
         }
-        var html = '';
-        for (var i = 0; i < data.length; i++) {
-        var row = data[i];
-        var dayLabel = dayNames[row.day_of_week] || '自訂';
-        var endTime = row.end_time || '';
-        html += '' +
-        '' + dayLabel + '' + row.start_time + '~' + endTime + ' ' + row.subject + '' +
-        '刪除' +
-        '';
-        }
-        listDiv.innerHTML = html;
-        } catch (err) {
+        listDiv.innerHTML = data.map(function(row) {
+          return '<div class="item"><span><span class="badge">' + (dayNames[row.day_of_week] || '自訂') + '</span><strong>' + row.start_time + '~' + (row.end_time || '') + '</strong> ' + row.subject + '</span><button type="button" class="del-btn" onclick="deleteClass(' + row.id + ')">刪除</button></div>';
+        }).join('');
+      } catch (err) {
         listDiv.innerText = '讀取異常：' + err.message;
-        }
-        }
-        async function addClass() {
-        var day_of_week = parseInt(document.getElementById('day').value);
-        var start_time = document.getElementById('start_time').value;
-        var end_time = document.getElementById('end_time').value;
-        var subject = document.getElementById('subject').value.trim();
-        if (!start_time || !end_time || !subject) return alert('請完整填寫時間與科目！');
-        if (start_time >= end_time) return alert('結束時間必須晚於開始時間！');
-        var btn = document.getElementById('btn-add');
-        btn.disabled = true;
-        btn.innerText = '新增中...';
-        try {
+      }
+    }
+
+    async function addClass() {
+      var apiKey = getApiKey();
+      var day_of_week = parseInt(document.getElementById('day').value);
+      var start_time = document.getElementById('start_time').value;
+      var end_time = document.getElementById('end_time').value;
+      var subject = document.getElementById('subject').value.trim();
+      if (!start_time || !end_time || !subject) return alert('請完整填寫時間與科目！');
+      if (start_time >= end_time) return alert('結束時間必須晚於開始時間！');
+
+      var btn = document.getElementById('btn-add');
+      btn.disabled = true;
+      btn.innerText = '新增中...';
+
+      try {
         var res = await fetch(SUPABASE_URL + '/rest/v1/timetable', {
-        method: 'POST',
-        headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + accessToken,
-        'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ day_of_week: day_of_week, start_time: start_time, end_time: end_time, subject: subject })
+          method: 'POST',
+          headers: {
+            'apikey': apiKey,
+            'Authorization': 'Bearer ' + accessToken,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ day_of_week: day_of_week, start_time: start_time, end_time: end_time, subject: subject })
         });
         if (!res.ok) {
-        var err = await res.json();
-        throw new Error(err.message || '無寫入權限，請檢查 RLS 設定');
+          var err = await res.json();
+          throw new Error(err.message || '無寫入權限，請檢查 RLS 設定');
         }
         document.getElementById('subject').value = '';
         loadClasses();
-        } catch (err) {
+      } catch (err) {
         alert('新增失敗：' + err.message);
-        } finally {
+      } finally {
         btn.disabled = false;
         btn.innerText = '＋ 新增到課表';
-        }
-        }
-        async function deleteClass(id) {
-        await fetch(SUPABASE_URL + '/rest/v1/timetable?id=eq.' + id, {
+      }
+    }
+
+    async function deleteClass(id) {
+      var apiKey = getApiKey();
+      await fetch(SUPABASE_URL + '/rest/v1/timetable?id=eq.' + id, {
         method: 'DELETE',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + accessToken }
-        });
-        loadClasses();
-        }
-        if (!checkRecoveryHash()) {
-        showView(accessToken ? 'app' : 'auth');
-        }
+        headers: { 'apikey': apiKey, 'Authorization': 'Bearer ' + accessToken }
+      });
+      loadClasses();
+    }
+
+    var hash = window.location.hash;
+    if (hash && hash.indexOf('type=recovery') !== -1) {
+      var token = new URLSearchParams(hash.substring(1)).get('access_token');
+      if (token) {
+        accessToken = token;
+        localStorage.setItem('sb_access_token', token);
+        window.history.replaceState(null, null, window.location.pathname);
+        showView('password');
+      } else {
+        showView('auth');
+      }
+    } else {
+      showView(accessToken ? 'app' : 'auth');
+    }
+  </script>
+</body>
+</html>
