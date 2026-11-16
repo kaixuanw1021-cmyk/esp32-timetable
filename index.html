@@ -22,12 +22,24 @@
     .item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
     .del-btn { width: auto; background: #ef4444; padding: 5px 10px; margin: 0; font-size: 0.85rem; }
     .badge { background: #d1fae5; color: #065f46; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; margin-right: 4px; }
-    .hidden { display: none; }
+    .hidden { display: none !important; }
     .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.85rem; color: #666; }
     .divider { text-align: center; margin: 14px 0 6px; font-size: 0.85rem; color: #888; }
+    #error-banner { background: #fee2e2; color: #b91c1c; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 0.9rem; display: none; }
   </style>
+  <script>
+    window.onerror = function(msg, url, line) {
+      var banner = document.getElementById('error-banner');
+      if (banner) {
+        banner.style.display = 'block';
+        banner.innerText = '網頁程式錯誤 (第 ' + line + ' 行): ' + msg;
+      }
+    };
+  </script>
 </head>
 <body>
+
+  <div id="error-banner"></div>
 
   <!-- 1. 登入與忘記密碼畫面 -->
   <div id="auth-section" class="card">
@@ -104,23 +116,22 @@
   </div>
 
   <script>
-    const SUPABASE_URL = 'https://iawhewgtugllvxrhocau.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlhd2hld2d0dWdsbHZ4cmhvY2F1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ3MzExNjgsImV4cCI6MjExMDMwNzE2OH0.ruNlWvU0EyXG5zc8XaR1c87d0QjmiTeNwpFUdUspbxo';
+    var SUPABASE_URL = 'https://supabase.co';
+    var SUPABASE_KEY = '在這裡貼上你的_anon_public_key';
 
-    let accessToken = localStorage.getItem('sb_access_token') || '';
-    let userEmail = localStorage.getItem('sb_user_email') || '';
+    var accessToken = localStorage.getItem('sb_access_token') || '';
+    var userEmail = localStorage.getItem('sb_user_email') || '';
 
-    const dayNames = {
+    var dayNames = {
       0: '週日', 1: '週一', 2: '週二', 3: '週三', 4: '週四', 5: '週五', 6: '週六',
       7: '每天', 8: '週一至五', 9: '只有週末'
     };
 
-    // 檢查是否從「忘記密碼重設信」點進來
     function checkRecoveryHash() {
-      const hash = window.location.hash;
-      if (hash && hash.includes('type=recovery')) {
-        const params = new URLSearchParams(hash.substring(1));
-        const token = params.get('access_token');
+      var hash = window.location.hash;
+      if (hash && hash.indexOf('type=recovery') !== -1) {
+        var params = new URLSearchParams(hash.substring(1));
+        var token = params.get('access_token');
         if (token) {
           accessToken = token;
           localStorage.setItem('sb_access_token', token);
@@ -142,22 +153,22 @@
       }
     }
 
-    // 1. 極速密碼登入 (原生 fetch)
     async function loginWithPassword() {
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
+      var email = document.getElementById('email').value.trim();
+      var password = document.getElementById('password').value;
       if (!email || !password) return alert('請輸入信箱與密碼！');
 
-      const btn = document.getElementById('btn-login');
-      btn.disabled = true; btn.innerText = '登入驗證中...';
+      var btn = document.getElementById('btn-login');
+      btn.disabled = true;
+      btn.innerText = '登入驗證中...';
 
       try {
-        const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+        var res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
           method: 'POST',
           headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
+          body: JSON.stringify({ email: email, password: password })
         });
-        const data = await res.json();
+        var data = await res.json();
         if (!res.ok) throw new Error(data.error_description || data.msg || '帳號或密碼錯誤');
 
         accessToken = data.access_token;
@@ -168,58 +179,60 @@
       } catch (err) {
         alert('登入失敗：' + err.message);
       } finally {
-        btn.disabled = false; btn.innerText = '密碼登入';
+        btn.disabled = false;
+        btn.innerText = '密碼登入';
       }
     }
 
-    // 2. 忘記密碼寄信
     async function forgotPassword() {
-      const email = document.getElementById('email').value.trim();
+      var email = document.getElementById('email').value.trim();
       if (!email) return alert('請先在上方輸入電子信箱！');
 
-      const btn = document.getElementById('btn-forgot');
-      btn.disabled = true; btn.innerText = '寄送重設信中...';
+      var btn = document.getElementById('btn-forgot');
+      btn.disabled = true;
+      btn.innerText = '寄送重設信中...';
 
       try {
-        const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
+        var res = await fetch(SUPABASE_URL + '/auth/v1/recover', {
           method: 'POST',
           headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, redirect_to: window.location.origin })
+          body: JSON.stringify({ email: email, redirect_to: window.location.origin })
         });
         if (!res.ok) {
-          const data = await res.json();
+          var data = await res.json();
           throw new Error(data.msg || '寄送失敗');
         }
         alert('重設密碼信件已寄出！請打開信箱點擊連結設定新密碼。');
       } catch (err) {
         alert('寄送失敗：' + err.message);
       } finally {
-        btn.disabled = false; btn.innerText = '忘記密碼？寄送重設連結';
+        btn.disabled = false;
+        btn.innerText = '忘記密碼？寄送重設連結';
       }
     }
 
-    // 3. 修改密碼
     function showChangePassword() { showView('password'); }
     function cancelPasswordChange() { showView('app'); }
 
     async function updatePassword() {
-      const newPassword = document.getElementById('new-password').value;
+      var newPassword = document.getElementById('new-password').value;
       if (newPassword.length < 6) return alert('新密碼至少需要 6 個字元！');
 
-      const btn = document.getElementById('btn-update-pw');
-      btn.disabled = true; btn.innerText = '更新密碼中...';
+      var btn = document.getElementById('btn-update-pw');
+      btn.disabled = true;
+      btn.innerText = '更新密碼中...';
 
       try {
-        const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        var res = await fetch(SUPABASE_URL + '/auth/v1/user', {
           method: 'PUT',
           headers: {
             'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${accessToken}`,
+            'Authorization': 'Bearer ' + accessToken,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ password: newPassword })
         });
-        const data = await res.json();
+        var data = await res.json();
         if (!res.ok) throw new Error(data.msg || '更新失敗，請重新登入後再試');
 
         alert('密碼已成功更新！');
@@ -228,103 +241,117 @@
       } catch (err) {
         alert('更新失敗：' + err.message);
       } finally {
-        btn.disabled = false; btn.innerText = '確認更新密碼';
+        btn.disabled = false;
+        btn.innerText = '確認更新密碼';
       }
     }
 
-    // 4. 通行金鑰 (Passkey) 註冊與登入
     async function registerPasskey() {
       if (!window.PublicKeyCredential) return alert('此裝置或瀏覽器不支援通行金鑰。');
-      const btn = document.getElementById('btn-passkey-reg');
-      btn.disabled = true; btn.innerText = '正在呼叫裝置指紋 / Face ID...';
+      var btn = document.getElementById('btn-passkey-reg');
+      btn.disabled = true;
+      btn.innerText = '正在呼叫裝置指紋 / Face ID...';
 
       try {
-        const res = await fetch(`${SUPABASE_URL}/auth/v1/factors`, {
+        var res = await fetch(SUPABASE_URL + '/auth/v1/factors', {
           method: 'POST',
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ factor_type: 'webauthn', friendly_name: '我的通行金鑰' })
+        headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + accessToken,
+        'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ factor_type: 'webauthn', friendly_name: '我的通行金鑰' })
         });
-        const data = await res.json();
-if (!res.ok) throw new Error(data.msg || '請確認 Supabase 後台已開啟 WebAuthn');
-alert('通行金鑰啟動成功！請依瀏覽器提示完成生物辨識綁定。');
-} catch (err) {
-alert('通行金鑰設定提示：' + err.message);
-} finally {
-btn.disabled = false; btn.innerText = '＋ 在此裝置新增通行金鑰';
-}
-}
-async function loginWithPasskey() {
-const email = document.getElementById('email').value.trim();
-if (!email) return alert('請先輸入你的電子信箱！');
-alert('請確認已在 Supabase 後台 Authentication -> Multi-Factor 開啟 WebAuthn，並先用密碼登入綁定此裝置。');
-}
-function logout() {
-accessToken = '';
-userEmail = '';
-localStorage.removeItem('sb_access_token');
-localStorage.removeItem('sb_user_email');
-showView('auth');
-}
-// 5. 課表讀取、新增與刪除
-async function loadClasses() {
-const listDiv = document.getElementById('list');
-listDiv.innerText = '讀取中...';
-try {
-const res = await fetch(${SUPABASE_URL}/rest/v1/timetable?select=*&order=day_of_week.desc,start_time.asc, {
-headers: { 'apikey': SUPABASE_KEY, 'Authorization': Bearer ${accessToken} }
-});
-if (res.status === 401) return logout(); // Token 過期自動登出
-const data = await res.json();
-if (!data || data.length === 0) { listDiv.innerText = '目前還沒有任何課程。'; return; }
-listDiv.innerHTML = data.map(row => <div class="item"> <span> <span class="badge">${dayNames[row.day_of_week] || '自訂'}</span> <strong>${row.start_time}~${row.end_time || ''}</strong> ${row.subject} </span> <button class="del-btn" onclick="deleteClass(${row.id})">刪除</button> </div>).join('');
-} catch (err) {
-listDiv.innerText = '讀取異常：' + err.message;
-}
-}
-async function addClass() {
-const day_of_week = parseInt(document.getElementById('day').value);
-const start_time = document.getElementById('start_time').value;
-const end_time = document.getElementById('end_time').value;
-const subject = document.getElementById('subject').value.trim();
-if (!start_time || !end_time || !subject) return alert('請完整填寫時間與科目！');
-if (start_time >= end_time) return alert('結束時間必須晚於開始時間！');
-const btn = document.getElementById('btn-add');
-btn.disabled = true; btn.innerText = '新增中...';
-try {
-const res = await fetch(${SUPABASE_URL}/rest/v1/timetable, {
-method: 'POST',
-headers: {
-'apikey': SUPABASE_KEY,
-'Authorization': Bearer ${accessToken},
-'Content-Type': 'application/json'
-},
-body: JSON.stringify({ day_of_week, start_time, end_time, subject })
-});
-if (!res.ok) {
-const err = await res.json();
-throw new Error(err.message || '無寫入權限，請檢查 RLS 設定');
-}
-document.getElementById('subject').value = '';
-loadClasses();
-} catch (err) {
-alert('新增失敗：' + err.message);
-} finally {
-btn.disabled = false; btn.innerText = '＋ 新增到課表';
-}
-}
-async function deleteClass(id) {
-await fetch(${SUPABASE_URL}/rest/v1/timetable?id=eq.${id}, {
-method: 'DELETE',
-headers: { 'apikey': SUPABASE_KEY, 'Authorization': Bearer ${accessToken} }
-});
-loadClasses();
-}
-// 啟動檢查
-if (!checkRecoveryHash()) {
-showView(accessToken ? 'app' : 'auth');
-}
-
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.msg || '請確認 Supabase 後台已開啟 WebAuthn');
+        alert('通行金鑰啟動成功！請依瀏覽器提示完成生物辨識綁定。');
+        } catch (err) {
+        alert('通行金鑰設定提示：' + err.message);
+        } finally {
+        btn.disabled = false;
+        btn.innerText = '＋ 在此裝置新增通行金鑰';
+        }
+        }
+        async function loginWithPasskey() {
+        var email = document.getElementById('email').value.trim();
+        if (!email) return alert('請先輸入你的電子信箱！');
+        alert('請確認已在 Supabase 後台 Authentication -> Multi-Factor 開啟 WebAuthn，並先用密碼登入綁定此裝置。');
+        }
+        function logout() {
+        accessToken = '';
+        userEmail = '';
+        localStorage.removeItem('sb_access_token');
+        localStorage.removeItem('sb_user_email');
+        showView('auth');
+        }
+        async function loadClasses() {
+        var listDiv = document.getElementById('list');
+        listDiv.innerText = '讀取中...';
+        try {
+        var res = await fetch(SUPABASE_URL + '/rest/v1/timetable?select=*&order=day_of_week.desc,start_time.asc', {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + accessToken }
+        });
+        if (res.status === 401) return logout();
+        var data = await res.json();
+        if (!data || data.length === 0) {
+        listDiv.innerText = '目前還沒有任何課程。';
+        return;
+        }
+        var html = '';
+        for (var i = 0; i < data.length; i++) {
+        var row = data[i];
+        var dayLabel = dayNames[row.day_of_week] || '自訂';
+        var endTime = row.end_time || '';
+        html += '' +
+        '' + dayLabel + '' + row.start_time + '~' + endTime + ' ' + row.subject + '' +
+        '刪除' +
+        '';
+        }
+        listDiv.innerHTML = html;
+        } catch (err) {
+        listDiv.innerText = '讀取異常：' + err.message;
+        }
+        }
+        async function addClass() {
+        var day_of_week = parseInt(document.getElementById('day').value);
+        var start_time = document.getElementById('start_time').value;
+        var end_time = document.getElementById('end_time').value;
+        var subject = document.getElementById('subject').value.trim();
+        if (!start_time || !end_time || !subject) return alert('請完整填寫時間與科目！');
+        if (start_time >= end_time) return alert('結束時間必須晚於開始時間！');
+        var btn = document.getElementById('btn-add');
+        btn.disabled = true;
+        btn.innerText = '新增中...';
+        try {
+        var res = await fetch(SUPABASE_URL + '/rest/v1/timetable', {
+        method: 'POST',
+        headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + accessToken,
+        'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ day_of_week: day_of_week, start_time: start_time, end_time: end_time, subject: subject })
+        });
+        if (!res.ok) {
+        var err = await res.json();
+        throw new Error(err.message || '無寫入權限，請檢查 RLS 設定');
+        }
+        document.getElementById('subject').value = '';
+        loadClasses();
+        } catch (err) {
+        alert('新增失敗：' + err.message);
+        } finally {
+        btn.disabled = false;
+        btn.innerText = '＋ 新增到課表';
+        }
+        }
+        async function deleteClass(id) {
+        await fetch(SUPABASE_URL + '/rest/v1/timetable?id=eq.' + id, {
+        method: 'DELETE',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + accessToken }
+        });
+        loadClasses();
+        }
+        if (!checkRecoveryHash()) {
+        showView(accessToken ? 'app' : 'auth');
+        }
